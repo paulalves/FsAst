@@ -1,7 +1,11 @@
-module Tests
+namespace FsAst
 
-open Xunit
+module Tests =
+    open Xunit
+    open FsAst.Library.Exp
+    open Xunit.Abstractions
 
-[<Fact>]
-let ``My test`` () =
-    Assert.True(true)
+    type ParserTests(output: ITestOutputHelper) =        
+        [<Fact>]
+        member this.``Parse a simple expression``() =
+            "41+1" |> parse |> sprintf "%A" |> output.WriteLine

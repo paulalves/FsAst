@@ -18,4 +18,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FsAst.Library\FsAst.Library.fsproj" />
+  </ItemGroup>
+
 </Project>
