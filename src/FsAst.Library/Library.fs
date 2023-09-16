@@ -9,6 +9,9 @@ module public Ast =
         | Number of int
         | Add
         | Subtract
+        | Power
+        | Multiply
+        | Division
 
     type Term =
         | Var of string
@@ -18,8 +21,10 @@ module public Ast =
     type TokenStream = Token list
 
 [<AutoOpen>]
-module private Parser =
+module internal Parser =
     let regex = Regex @"((?<token>(\d+|\w+|\^|\+|-|\*|/)))"
+
+    let isDigit (ch: string) = ch.[0] |> System.Char.IsDigit
 
     let tokenize (input: string) =
         [ for x in regex.Matches(input) do
@@ -27,26 +32,38 @@ module private Parser =
                   match x.Groups.["token"].Value with
                   | "+" -> Add
                   | "-" -> Subtract
-                  | ch when System.Char.IsDigit ch.[0] -> Number(int ch)
-                  | ch -> Identifier ch
-
+                  | "*" -> Multiply
+                  | "^" -> Power
+                  | "/" -> Division
+                  | ch when isDigit ch -> Number(int ch)
+                  | ch -> Identifier(ch)
               yield token ]
 
     let read (stream: TokenStream) =
         match stream with
-        | head :: tail ->
-            Some(head, tail)
+        | head :: tail -> Some(head, tail)
         | _ -> None
 
     let rec parseTerm (stream: TokenStream) =
         match read stream with
-        | Some(Number number, stream) ->
-            Const(number), stream
+        | Some(Number number, stream) -> Const(number), stream
         | Some(Identifier id, stream) ->
             let term = Var(id)
-            term, stream
-        | None -> failwith "The stream is empty"
-        | Some _ -> failwith "Unexpected token"
+            match read stream with
+            | Some(Power, _) ->
+                let powerTerm, stream = parsePower stream
+                Op(term, "^", powerTerm), stream
+            | _ -> term, stream
+        | _ -> failwith "Unexpected token"
+        
+    and parsePower (stream: TokenStream) =
+        match read stream with
+        | Some(Power, stream) ->
+            let rhs, stream = parseTerm stream
+            match rhs with
+            | Const _ -> parsePower stream
+            | _ -> failwith "The right hand side of a power must be a constant"
+        | _ -> Const 1 , stream
 
     let rec parseExpr (stream: TokenStream) =
         let term, stream = parseTerm stream
@@ -57,12 +74,22 @@ module private Parser =
         | Some(Subtract, stream) ->
             let next, stream = parseExpr stream
             Op(term, "-", next), stream
+        | Some(Multiply, stream) ->
+            let next, stream = parseExpr stream
+            Op(term, "*", next), stream
+        | Some(Division, stream) ->
+            let next, stream = parseExpr stream
+            Op(term, "/", next), stream
+        | Some(Power, stream) ->
+            let next, stream = parseExpr stream
+            Op(term, "^", next), stream
         | _ -> term, stream
 
 module Exp =
     let parse (input: string) =
         input
-            |> tokenize 
-            |> parseExpr
-            |> function | (ast, []) -> ast
-                        | _ -> failwith "Unexpected token"
+        |> tokenize
+        |> parseExpr
+        |> function
+            | ast, [] -> ast
+            | _ -> failwith "Unexpected token"
