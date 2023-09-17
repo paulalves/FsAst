@@ -102,11 +102,44 @@ module internal Parser =
             Op(lhs, "-", rhs), stream'''
         | _ -> lhs, stream'
 
+[<AutoOpen>]
 module Exp =
-    let parse (input: string) =
+    let parseTokens tokens =
+        match parseExpr tokens with
+        | ast, [] -> ast
+        | _ -> failwith "Unexpected token"
+    
+    let parse input =
         input
         |> tokenize
-        |> parseExpr
-        |> function
-            | ast, [] -> ast
-            | _ -> failwith "Unexpected token"
+        |> parseTokens
+            
+[<AutoOpen>]            
+module Eval =
+    type Context = Map<string, int>
+    
+    exception VariableNotFoundException of string
+    
+    let rec private evaluate context term : int =
+        match term with
+        | Var v -> 
+            match Map.tryFind v context with
+            | Some value -> value
+            | None -> raise (VariableNotFoundException v)
+        | Const c -> c
+        | Op(left, "+", right) -> (evaluate context left) + (evaluate context right)
+        | Op(left, "-", right) -> (evaluate context left) - (evaluate context right)
+        | Op(left, "*", right) -> (evaluate context left) * (evaluate context right)
+        | Op(left, "/", right) -> 
+            let divisor = evaluate context right
+            if divisor = 0 then failwith "Division by zero"
+            else (evaluate context left) / divisor
+        | Op(left, "^", right) -> 
+            int (System.Math.Pow(float (evaluate context left), float (evaluate context right)))
+        | Op _ -> failwith "Unknown operator"
+    
+    let evalAst ctx term =
+        ctx |> evaluate <| term
+    
+    let evalExp ctx exp : int =
+        evalAst ctx <| parse exp

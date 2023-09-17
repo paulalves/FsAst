@@ -5,7 +5,6 @@ module Tests =
     open Xunit
     open FsUnit.Xunit
     open FsAst.Library
-    open FsAst.Library.Exp
 
     let validTokenizationSamples: obj[] seq =
         [ 
@@ -36,6 +35,18 @@ module Tests =
           yield [| "2x * 3y + z"; Op(Op(Const 2, "*", Op(Var "x", "*", Op(Const 3, "*", Var "y"))), "+", Var "z") |]
         ]
     
+    let expressionSamples : obj[] seq =
+        [
+            yield [| "2"; Map<string, int>([]); 2 |]
+            yield [| "2 + 2"; Map<string, int>([]); 4 |]
+            yield [| "2 - 2"; Map<string, int>([]); 0 |]
+            yield [| "2 * 2"; Map<string, int>([]); 4 |]
+            yield [| "2 / 2"; Map<string, int>([]); 1 |]            
+            yield [| "2 + 2 * 2"; Map<string, int>([]); 6 |]
+            yield [| "x + y * 3"; Map.ofList ["x", 1; "y", 2]; 7 |]            
+            yield [| "x ^ 2 + 3x - 5"; Map.ofList ["x", 2]; 5 |]            
+        ]
+    
     [<Theory>]
     [<ExcludeFromCodeCoverage>]
     [<MemberData(nameof (validTokenizationSamples))>]
@@ -50,4 +61,12 @@ module Tests =
     let ``when received valid input it should parse it`` input expected =
         input
         |> parse
+        |> should equal expected
+        
+    [<Theory>]
+    [<ExcludeFromCodeCoverage>]
+    [<MemberData(nameof (expressionSamples))>]
+    let ``when received valid input it should evaluate it`` (input : string) (context : Map<string, int>) (expected: int) =
+        input
+        |> evalExp context            
         |> should equal expected
