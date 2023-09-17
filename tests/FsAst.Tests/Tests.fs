@@ -20,6 +20,8 @@ module Tests =
     let validParsingSamples: obj[] seq =
         [
           yield [| "x"; Var "x" |]
+          yield [| "variable"; Var "variable" |]
+          yield [| "3items"; Op(Const 3, "*", Var "items") |]
           yield [| "3x"; Op(Const 3, "*", Var "x") |]
           yield [| "42"; Const 42 |]
           yield [| "x ^ 3"; Op(Var "x", "^", Const 3) |]
@@ -33,7 +35,7 @@ module Tests =
           yield [| "x ^ 3 ^ 2"; Op(Var "x", "^", Op(Const 3, "^", Const 2)) |]          
           yield [| "2x * 3y + z"; Op(Op(Const 2, "*", Op(Var "x", "*", Op(Const 3, "*", Var "y"))), "+", Var "z") |]
         ]
-
+    
     [<Theory>]
     [<ExcludeFromCodeCoverage>]
     [<MemberData(nameof (validTokenizationSamples))>]
