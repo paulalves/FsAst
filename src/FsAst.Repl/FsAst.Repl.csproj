@@ -2,11 +2,8 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <NoWarn>1591</NoWarn>
     </PropertyGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\FsAst.Types\FsAst.Types.fsproj" />
-    </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\FsAst.Types\FsAst.Types.fsproj" />
