@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FsAst.Types\FsAst.Types.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FsAst.Types\FsAst.Types.fsproj" />
+    </ItemGroup>
+
+</Project>
