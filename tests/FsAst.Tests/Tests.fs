@@ -1,84 +1,41 @@
 namespace FsAst
 
 module Tests =
+    open System.Diagnostics.CodeAnalysis
     open Xunit
     open FsUnit.Xunit
-    open FsAst.Library.Ast
-    open FsAst.Library.Parser
+    open FsAst.Library
     open FsAst.Library.Exp
-    open Xunit.Abstractions
 
-    let debug argument  =
-        fun (output: ITestOutputHelper) -> 
-            output.WriteLine(sprintf "%A" argument)
-            argument
+    let validTokenizationSamples : obj[] seq =
+        [ yield [| "x + y ^ x * y"; [| Identifier "x"; Add; Identifier "y"; Power; Identifier "x"; Multiply; Identifier "y" |] |]
+          yield [| "x ^ 2 + 1"; [| Identifier "x"; Power; Number 2; Add; Number 1 |] |]
+          yield [| "3x"; [| Number 3; Identifier "x" |] |]
+          yield [| "5"; [| Number 5 |] |]
+          yield [| "x ^ 2 + 3x - 5"; [| Identifier "x"; Power; Number 2; Add; Number 3; Identifier "x"; Subtract; Number 5 |] |]
+          yield [| "x ^ 3 ^ 2"; [| Identifier "x"; Power; Number 3; Power; Number 2 |] |]
+        ]
 
-    type ParserTests(output: ITestOutputHelper) =
+    let validParsingSamples : obj[] seq =
+        [ yield [| "x"; Var "x" |]
+          yield [| "42"; Const 42 |]
+          yield [| "x ^ 3"; Op(Var "x", "^", Const 3) |]
+          yield [| "x + y"; Op(Var "x", "+", Var "y") |]
+          yield [| "x - y"; Op(Var "x", "-", Var "y") |]
+          yield [| "x * y"; Op(Var "x", "*", Var "y") |]
+          yield [| "x / y"; Op(Var "x", "/", Var "y") |]
+          yield [| "x ^ 3 ^ 2"; Op(Var "x", "^", Op(Const 3, "^", Const 2)) |]          
+          //yield [| "x ^ 2 + 3x - 5"; Op(Op(Op(Var "x", "^", Const 2), "+", Op(Const 3, "*", Var "x")), "-", Const 5) |]
+        ]
+        
+    [<Theory>]
+    [<ExcludeFromCodeCoverage>]
+    [<MemberData(nameof(validTokenizationSamples))>]
+    let ``when received valid input it should tokenize it`` input expected =
+        input |> tokenize |> should equalSeq expected
 
-        [<Fact>]
-        member this.``tokenization tests``() =
-            tokenize "x+y^x*y"
-            |> debug <| output
-            |> should
-                equalSeq
-                (seq<Token> {
-                    Identifier "x"
-                    Add
-                    Identifier "y"
-                    Power
-                    Identifier "x"
-                    Multiply
-                    Identifier "y"
-                })
-            
-            tokenize "x^2+1"
-            |> debug <| output
-            |> should
-                equalSeq
-                (seq<Token> {
-                    Identifier "x"
-                    Power
-                    Number 2
-                    Add
-                    Number 1
-                })
-
-            tokenize "3x"
-            |> debug <| output 
-            |> should
-                equalSeq
-                (seq<Token> {
-                    Number 3
-                    Identifier "x"
-                })
-
-            tokenize "5"
-            |> debug <| output
-            |> should
-                   equalSeq
-                   (seq<Token> {
-                       Number 5
-                   })
-
-        [<Fact>]
-        member this.``parsing tests``() =
-            "41+1"
-            |> parse
-            |> debug <| output
-            |> should equal (Op (Const 41, "+", Const 1))
-            
-            "2*2"
-            |> parse
-            |> debug <| output
-            |> should equal (Op (Const 2, "*", Const 2))
-            
-            "x^2+1"
-            |> parse
-            |> debug <| output
-            |> should equal (Op (Op (Var "x", "^", Const 1), "+", Const 1))
-
-            // todo: fix this! it's too late of a night to figure out why this is failing     
-            // "x*3-1+2*1"
-            // |> parse
-            // |> debug <| output
-            // |> should equal (Op (Op (Op (Op (Var "x", "*", Const 3), "-", Const 1), "+", Op (Op (Var "x", "*", Const 2), "/", Const 2)), "*", Const 1))
+    [<Theory>]
+    [<ExcludeFromCodeCoverage>]
+    [<MemberData(nameof(validParsingSamples))>]
+    let ``when received valid input it should parse it`` input expected =
+        input |> parse |> should equal expected

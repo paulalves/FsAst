@@ -1,7 +1,5 @@
 ﻿namespace FsAst.Library
 
-open System.Text.RegularExpressions
-
 [<AutoOpen>]
 module public Ast =
     type Token =
@@ -22,9 +20,11 @@ module public Ast =
 
 [<AutoOpen>]
 module internal Parser =
-    let regex = Regex @"((?<token>(\d+|\w+|\^|\+|-|\*|/)))"
+    open System.Text.RegularExpressions
+    
+    let private regex = Regex @"((?<token>(\d+|\w+|\^|\+|-|\*|/)))"
 
-    let isDigit (ch: string) = ch.[0] |> System.Char.IsDigit
+    let private isDigit (ch: string) = ch.[0] |> System.Char.IsDigit
 
     let tokenize (input: string) =
         [ for x in regex.Matches(input) do
@@ -39,51 +39,46 @@ module internal Parser =
                   | ch -> Identifier(ch)
               yield token ]
 
-    let read (stream: TokenStream) =
+    let private read (stream: TokenStream) =
         match stream with
         | head :: tail -> Some(head, tail)
         | _ -> None
 
-    let rec parseTerm (stream: TokenStream) =
+    let rec private parseTerm (stream: TokenStream) =
         match read stream with
         | Some(Number number, stream) -> Const(number), stream
-        | Some(Identifier id, stream) ->
-            let term = Var(id)
-            match read stream with
-            | Some(Power, _) ->
-                let powerTerm, stream = parsePower stream
-                Op(term, "^", powerTerm), stream
-            | _ -> term, stream
+        | Some(Identifier id, stream) -> Var(id), stream
         | _ -> failwith "Unexpected token"
-        
-    and parsePower (stream: TokenStream) =
-        match read stream with
-        | Some(Power, stream) ->
-            let rhs, stream = parseTerm stream
-            match rhs with
-            | Const _ -> parsePower stream
-            | _ -> failwith "The right hand side of a power must be a constant"
-        | _ -> Const 1 , stream
+
+    let rec parsePower (stream: TokenStream) =
+        let lhs, stream' = parseTerm stream
+        match read stream' with
+        | Some(Power, stream'') ->
+            let rhs, stream''' = parsePower stream''
+            Op(lhs, "^", rhs), stream'''
+        | _ -> lhs, stream'
+
+    let rec parseFactor (stream: TokenStream) =
+        let lhs, stream' = parsePower stream
+        match read stream' with
+        | Some(Multiply, stream'') ->
+            let rhs, stream''' = parseFactor stream''
+            Op(lhs, "*", rhs), stream'''
+        | Some(Division, stream'') ->
+            let rhs, stream''' = parseFactor stream''
+            Op(lhs, "/", rhs), stream'''
+        | _ -> lhs, stream'
 
     let rec parseExpr (stream: TokenStream) =
-        let term, stream = parseTerm stream
-        match read stream with
-        | Some(Add, stream) ->
-            let next, stream = parseExpr stream
-            Op(term, "+", next), stream
-        | Some(Subtract, stream) ->
-            let next, stream = parseExpr stream
-            Op(term, "-", next), stream
-        | Some(Multiply, stream) ->
-            let next, stream = parseExpr stream
-            Op(term, "*", next), stream
-        | Some(Division, stream) ->
-            let next, stream = parseExpr stream
-            Op(term, "/", next), stream
-        | Some(Power, stream) ->
-            let next, stream = parseExpr stream
-            Op(term, "^", next), stream
-        | _ -> term, stream
+        let lhs, stream' = parseFactor stream
+        match read stream' with
+        | Some(Add, stream'') ->
+            let rhs, stream''' = parseExpr stream''
+            Op(lhs, "+", rhs), stream'''
+        | Some(Subtract, stream'') ->
+            let rhs, stream''' = parseExpr stream''
+            Op(lhs, "-", rhs), stream'''
+        | _ -> lhs, stream'
 
 module Exp =
     let parse (input: string) =
