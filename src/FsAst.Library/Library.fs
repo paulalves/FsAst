@@ -27,31 +27,33 @@ module internal Parser =
     let private isDigit (ch: string) = ch.[0] |> System.Char.IsDigit
    
     let tokenize (input: string) : Token list =
-        // todo: remember how to write active patterns and remove this little ugly thing.
-        let tokenMap = 
-            dict [
-                ("+", Add); 
-                ("-", Subtract); 
-                ("*", Multiply); 
-                ("^", Power); 
-                ("/", Division)
-            ]
+        let (|OperatorTokenActivePattern|_|) ch =
+            match ch with
+            | "+" -> Some Add
+            | "-" -> Some Subtract
+            | "*" -> Some Multiply
+            | "^" -> Some Power
+            | "/" -> Some Division
+            | _ -> None
+            
+        let (|NumericTokenActivePattern|_|) ch =
+            if isDigit ch then Some (Number (int ch)) else None
         
         let peekNextToken currentIndex =
             let m = regex.Match(input, currentIndex)
             if not m.Success then None
             else
                 match m.Groups.["token"].Value with
-                | ch when tokenMap.ContainsKey ch -> Some (tokenMap.[ch])
-                | ch when isDigit ch -> Some (Number(int ch))
-                | ch -> Some (Identifier(ch))
-    
+                | OperatorTokenActivePattern t -> Some t
+                | NumericTokenActivePattern n -> Some n
+                | ch -> Some (Identifier ch)
+
         let tokens =
             [ for x in regex.Matches(input) |> Seq.cast<Match> do
                 match x.Groups.["token"].Value with
-                | ch when tokenMap.ContainsKey ch -> yield tokenMap.[ch]
-                | ch when isDigit ch -> 
-                    yield Number(int ch)
+                | OperatorTokenActivePattern t -> yield t
+                | NumericTokenActivePattern n -> 
+                    yield n
                     if peekNextToken (x.Index + x.Length)
                        |> Option.exists (function Identifier _ -> true | _ -> false) then
                         yield Multiply
