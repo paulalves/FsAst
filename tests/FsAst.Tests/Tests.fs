@@ -32,7 +32,10 @@ module Tests =
           yield [| "x ^ 2 + y"; Op(Op(Var "x", "^", Const 2), "+", Var "y") |]
           yield [| "2 + 1 * 3"; Op(Const 2, "+", Op(Const 1, "*", Const 3)) |]
           yield [| "x ^ 3 ^ 2"; Op(Var "x", "^", Op(Const 3, "^", Const 2)) |]          
-          yield [| "2x * 3y + z"; Op(Op(Const 2, "*", Op(Var "x", "*", Op(Const 3, "*", Var "y"))), "+", Var "z") |]
+          yield [| "2x * 3y + z"; Op(Op(Const 2, "*", Op(Var "x", "*", Op(Const 3, "*", Var "y"))), "+", Var "z") |]          
+          yield [| "2 ^ 2 - 2 ^ 2 * 1"; Op(Op(Const 2, "^", Const 2), "-", Op(Op(Const 2, "^", Const 2), "*", Const 1)) |]
+          yield [| "2x ^ 2 - 2 ^ 2 * 1"; Op(Op(Const 2, "*", Op(Var "x", "^", Const 2)), "-", Op(Op(Const 2, "^", Const 2), "*", Const 1)) |]
+          yield [| "2x ^ 2x - 2 ^ 2 * 1"; Op(Op(Const 2, "*", Op(Op(Var "x", "^", Const 2), "*", Var "x")), "-", Op (Op (Const 2, "^", Const 2), "*", Const 1))|]
         ]
     
     let expressionSamples : obj[] seq =
@@ -44,7 +47,9 @@ module Tests =
             yield [| "2 / 2"; Map<string, int>([]); 1 |]            
             yield [| "2 + 2 * 2"; Map<string, int>([]); 6 |]
             yield [| "x + y * 3"; Map.ofList ["x", 1; "y", 2]; 7 |]            
-            yield [| "x ^ 2 + 3x - 5"; Map.ofList ["x", 2]; 5 |]            
+            yield [| "x ^ 2 + 3x - 5"; Map.ofList ["x", 2]; 5 |]
+            yield [| "2x ^ 2 - 2 ^ 2 * 1"; Map.ofList ["x", 2]; 4 |]
+            yield [| "2x ^ 2x - 2 ^ 2 * 1"; Map.ofList ["x", 2]; 12 |]
         ]
     
     [<Theory>]
