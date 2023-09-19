@@ -5,7 +5,7 @@
     open Microsoft.FSharp.Collections
 
     type Command =
-        | Set of string * int
+        | Set of string * decimal
         | Get of string
         | Delete of string
         | Eval of string
@@ -20,7 +20,7 @@
 
         match parts with
         | [| "set"; var; value |] ->
-            match Int32.TryParse(value) with
+            match Decimal.TryParse(value) with
             | true, value -> Some(Set(var, value))
             | _ -> None
         | [| "get"; var |] -> Some(Get var)
@@ -30,26 +30,23 @@
         | [| "debug" |] -> Some EnableDebug
         | [| "undebug" |] -> Some DisableDebug
         | [| "exit" |] -> Some Exit
-        | array ->
-            match array.[0] with
-            | "eval" -> Some(Eval(String.Join(" ", array.[1..])))
-            | _ -> None
+        | array -> Some(Eval(String.Join(" ", array)))            
 
     type ReplService() =
         let mutable isDebugMode = false
-        let mutable context = Dictionary<string, int>()
+        let mutable context = Dictionary<string, decimal>()
 
-        let toMap (dict: Dictionary<string, int>) =
+        let toMap (dict: Dictionary<string, decimal>) =
             dict |> Seq.map (fun (item) -> item.Key, item.Value) |> Map.ofSeq
 
         member this.HandleCommand cmd =
             match cmd with
             | Set(var, value) ->
                 context.[var] <- value
-                printfn "Set %s to %d" var value
+                printfn "Set %s to %f" var value
             | Get var ->
                 match context.TryGetValue(var) with
-                | true, value -> printfn "%d" value
+                | true, value -> printfn "%f" value
                 | _ -> printfn "Error: Variable %s not found." var
             | Delete var ->
                 if context.Remove(var) then
@@ -60,19 +57,22 @@
             | Reset -> context.Clear()
             | EnableDebug ->
                 isDebugMode <- true
-                printfn "Debug mode enabled."
+                printfn "...debug mode enabled."
             | DisableDebug ->
                 isDebugMode <- false
-                printfn "Debug mode disabled."
+                printfn "...debug mode disabled."
             | Eval exp ->
                 let tokens = exp |> FsAst.Library.Parser.tokenize
                 let ast, _ = tokens |> FsAst.Library.Parser.parseExpr
                 if isDebugMode then
                     printfn "Tokens: %A" tokens
                     printfn "AST: %A" ast
-                let ctx = (toMap context)
-                let r = FsAst.Library.Eval.evalAst ctx ast
-                r |> printfn "%A"
+                (toMap context) |> FsAst.Library.Eval.evalAst <| ast |>
+                    fun r ->
+                        if r % 1m = 0m then
+                            printfn "%i" (int r)
+                        else printfn "%0.2f" r
+                        context.["result"] <- r
             | Exit -> System.Environment.Exit(0)
 
     let run () =
